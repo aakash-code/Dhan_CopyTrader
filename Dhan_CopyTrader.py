@@ -34,8 +34,10 @@ key = os.environ.get('key')
 if key:
     mysecret = key.encode()
 else:
-    print('Environment file not found. Exiting')
-    sys.exit()
+    print('ERROR: Encryption key not found in environment variables.')
+    print('Please run "python dhan_encrypt_utility.py" first to generate encryption key and encrypt your access tokens.')
+    print('This will create a .env file with the encryption key.')
+    sys.exit(1)
 
 
 def deCryptPwd(encodedPwd):

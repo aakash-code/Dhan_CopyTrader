@@ -144,6 +144,10 @@ ENV/
 env.bak/
 venv.bak/
 
+# Dhan Copy Trader specific files
+config.json
+logcopytrade.log
+
 # Spyder project settings
 .spyderproject
 .spyproject

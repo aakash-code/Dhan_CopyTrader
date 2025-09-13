@@ -27,10 +27,11 @@ The application is successfully configured and runs in the Replit environment. I
    - Generate Access Token for each trading account
    - Note down Client ID and Access Token
 
-2. **Encrypt Your Tokens**:
+2. **Encrypt Your Tokens** (run in Shell/Console):
    ```bash
    python dhan_encrypt_utility.py
    ```
+   - **Important**: Run this interactively in the Shell/Console, not via workflow
    - Enter each access token when prompted
    - Copy the encrypted values
 
@@ -43,15 +44,18 @@ The application is successfully configured and runs in the Replit environment. I
 4. **Run the System**:
    - The workflow "Dhan Copy Trader" is already configured
    - It will automatically start when you run the project
-   - Monitor logs in the console output
+   - View workflow logs in the Console panel in Replit
+   - Application logs are written to `logcopytrade.log` file
 
 ## Key Features
-- Real-time order replication
-- Multiple child account support
+- **Note**: Real-time order replication is currently disabled due to DhanLiveFeed being unavailable in the current SDK version
+- Connection validation for master and child accounts
+- One-time margin snapshot display across all accounts
+- Multiple child account configuration support
 - Custom quantity multipliers per account
 - Secure encrypted token storage
 - Comprehensive logging and error handling
-- Margin monitoring across all accounts
+- Ready for real-time trading once live feed is available
 
 ## Security Features
 - All access tokens are encrypted using Fernet encryption
@@ -78,9 +82,11 @@ The application is successfully configured and runs in the Replit environment. I
 └── README.md                  # Detailed project documentation
 ```
 
-## Dependencies Installed
-- dhanhq==2.0.2 (Dhan API SDK)
-- cryptography==45.0.7 (Token encryption)
-- python-dotenv==1.1.1 (Environment variable management)
-- requests==2.32.5 (HTTP client)
-- Plus supporting packages (pandas, numpy, etc.)
+## Dependencies Required
+Based on `dhan_requirements.txt`:
+- dhanhq>=2.1.0 (Dhan API SDK)
+- cryptography>=36.0.2 (Token encryption)
+- python-dotenv>=1.0.0 (Environment variable management)
+- requests>=2.28.1 (HTTP client)
+
+Dependencies are managed via uv (Python package manager) and are automatically installed.

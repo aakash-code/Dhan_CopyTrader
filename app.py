@@ -120,6 +120,7 @@ def settings():
 # API Routes
 @app.route('/api/accounts/master', methods=['GET', 'POST'])
 @login_required
+@csrf.exempt
 def api_master_account():
     if request.method == 'GET':
         # Return current master account info (without sensitive data)

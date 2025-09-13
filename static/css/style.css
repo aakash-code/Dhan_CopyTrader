@@ -1,0 +1,224 @@
+/* Custom CSS for Dhan Copy Trader */
+
+/* Body and general styling */
+body {
+    background-color: #f8f9fa;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Navigation styling */
+.navbar-brand {
+    font-weight: 600;
+}
+
+.nav-link.active {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+/* Card enhancements */
+.card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: none;
+    border-radius: 8px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* Status indicators */
+.status-connected {
+    color: #28a745;
+}
+
+.status-disconnected {
+    color: #dc3545;
+}
+
+.status-checking {
+    color: #6c757d;
+}
+
+/* Trading feed styling */
+#trading-feed {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.9rem;
+    background-color: #f8f9fa;
+}
+
+.feed-item {
+    transition: background-color 0.3s;
+}
+
+.feed-item:hover {
+    background-color: rgba(0,0,0,0.05);
+}
+
+/* Connection status indicator */
+#connection-status {
+    z-index: 1000;
+}
+
+#connection-status .badge {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+}
+
+#status-indicator {
+    animation: pulse 2s infinite;
+}
+
+#status-indicator.connected {
+    color: #28a745;
+}
+
+#status-indicator.disconnected {
+    color: #dc3545;
+}
+
+#status-indicator.connecting {
+    color: #ffc107;
+}
+
+/* Pulse animation for status indicator */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+/* Account cards */
+.account-card {
+    border-left: 4px solid #007bff;
+}
+
+.account-card.master {
+    border-left-color: #28a745;
+}
+
+.account-card.child {
+    border-left-color: #17a2b8;
+}
+
+/* Progress bars in tables */
+.table .progress {
+    height: 16px;
+    margin: 0;
+}
+
+/* Form enhancements */
+.form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Modal enhancements */
+.modal-content {
+    border-radius: 8px;
+    border: none;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+/* Button enhancements */
+.btn {
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+/* Alert enhancements */
+.alert {
+    border-radius: 6px;
+    border: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .navbar-nav {
+        text-align: center;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .table-responsive {
+        font-size: 0.9rem;
+    }
+    
+    #connection-status {
+        position: fixed;
+        bottom: 10px;
+        right: 10px;
+        left: 10px;
+        text-align: center;
+    }
+}
+
+/* Loading states */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Trading status badges */
+.status-active {
+    background-color: #28a745 !important;
+}
+
+.status-inactive {
+    background-color: #6c757d !important;
+}
+
+/* Margin utilization colors */
+.utilization-low {
+    background-color: #28a745;
+}
+
+.utilization-medium {
+    background-color: #ffc107;
+}
+
+.utilization-high {
+    background-color: #dc3545;
+}
+
+/* Custom scrollbar for feed */
+#trading-feed::-webkit-scrollbar {
+    width: 6px;
+}
+
+#trading-feed::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+#trading-feed::-webkit-scrollbar-thumb {
+    background: #007bff;
+    border-radius: 3px;
+}
+
+#trading-feed::-webkit-scrollbar-thumb:hover {
+    background: #0056b3;
+}

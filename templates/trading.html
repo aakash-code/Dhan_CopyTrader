@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+
+{% block title %}Trading Monitor - Dhan Copy Trader{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-bar-chart"></i> Trading Monitor</h1>
+    <div class="btn-group">
+        <button class="btn btn-success" id="start-trading" onclick="startTrading()">
+            <i class="bi bi-play-circle"></i> Start Trading
+        </button>
+        <button class="btn btn-danger" id="stop-trading" onclick="stopTrading()" style="display:none;">
+            <i class="bi bi-stop-circle"></i> Stop Trading
+        </button>
+    </div>
+</div>
+
+<!-- Trading Status Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <div class="h4 text-primary" id="orders-today">0</div>
+                <div class="text-muted">Orders Today</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <div class="h4 text-success" id="successful-copies">0</div>
+                <div class="text-muted">Successful Copies</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <div class="h4 text-danger" id="failed-copies">0</div>
+                <div class="text-muted">Failed Copies</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <div class="h4 text-info" id="uptime">00:00:00</div>
+                <div class="text-muted">System Uptime</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Live Trading Feed -->
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-activity"></i> Live Trading Activity
+                </h5>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary btn-sm" onclick="clearFeed()">
+                        <i class="bi bi-trash"></i> Clear
+                    </button>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="auto-scroll" checked>
+                        <label class="form-check-label" for="auto-scroll">Auto-scroll</label>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body" style="height: 500px; overflow-y: auto;" id="trading-feed">
+                <div class="text-center text-muted py-5">
+                    <i class="bi bi-hourglass-split"></i>
+                    <p class="mt-2">Waiting for trading activity...</p>
+                    <small>Live trading feed will appear here when orders are placed.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Account Status Sidebar -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-shield-check"></i> Account Status
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="account-status-list">
+                    <div class="text-center text-muted py-3">
+                        <i class="bi bi-hourglass-split"></i>
+                        <p class="mt-2">Loading account status...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- System Logs -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-file-text"></i> System Logs
+                </h5>
+            </div>
+            <div class="card-body" style="height: 200px; overflow-y: auto;" id="system-logs">
+                <div class="text-center text-muted py-3">
+                    <i class="bi bi-file-text"></i>
+                    <p class="mt-2">System logs will appear here</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Order Details Modal -->
+<div class="modal fade" id="orderModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Order Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="order-details-content">
+                <!-- Order details will be populated here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let tradingActive = false;
+let startTime = null;
+let uptimeInterval = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadAccountStatus();
+    updateSystemLogs();
+});
+
+function startTrading() {
+    tradingActive = true;
+    startTime = new Date();
+    
+    document.getElementById('start-trading').style.display = 'none';
+    document.getElementById('stop-trading').style.display = 'inline-block';
+    
+    addTradingFeedItem('System', 'Trading system started', 'success');
+    
+    // Start uptime counter
+    uptimeInterval = setInterval(updateUptime, 1000);
+    
+    showAlert('Trading system started successfully', 'success');
+}
+
+function stopTrading() {
+    tradingActive = false;
+    
+    document.getElementById('start-trading').style.display = 'inline-block';
+    document.getElementById('stop-trading').style.display = 'none';
+    
+    addTradingFeedItem('System', 'Trading system stopped', 'warning');
+    
+    // Stop uptime counter
+    if (uptimeInterval) {
+        clearInterval(uptimeInterval);
+        uptimeInterval = null;
+    }
+    
+    showAlert('Trading system stopped', 'warning');
+}
+
+function updateUptime() {
+    if (!startTime) return;
+    
+    const now = new Date();
+    const diff = now - startTime;
+    
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    
+    const uptimeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    document.getElementById('uptime').textContent = uptimeString;
+}
+
+function addTradingFeedItem(source, message, type = 'info') {
+    const feed = document.getElementById('trading-feed');
+    const timestamp = new Date().toLocaleTimeString();
+    
+    const iconMap = {
+        'success': 'bi-check-circle-fill text-success',
+        'error': 'bi-x-circle-fill text-danger',
+        'warning': 'bi-exclamation-triangle-fill text-warning',
+        'info': 'bi-info-circle-fill text-info'
+    };
+    
+    const feedItem = document.createElement('div');
+    feedItem.className = 'border-start border-3 border-' + type + ' ps-3 mb-3';
+    feedItem.innerHTML = `
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <div class="fw-bold">
+                    <i class="${iconMap[type]}"></i> ${source}
+                </div>
+                <div class="text-muted small">${message}</div>
+            </div>
+            <span class="badge bg-light text-dark small">${timestamp}</span>
+        </div>
+    `;
+    
+    // Remove placeholder if it exists
+    const placeholder = feed.querySelector('.text-center');
+    if (placeholder) {
+        placeholder.remove();
+    }
+    
+    feed.appendChild(feedItem);
+    
+    // Auto-scroll if enabled
+    if (document.getElementById('auto-scroll').checked) {
+        feed.scrollTop = feed.scrollHeight;
+    }
+}
+
+function clearFeed() {
+    const feed = document.getElementById('trading-feed');
+    feed.innerHTML = `
+        <div class="text-center text-muted py-5">
+            <i class="bi bi-hourglass-split"></i>
+            <p class="mt-2">Feed cleared. Waiting for trading activity...</p>
+        </div>
+    `;
+}
+
+function loadAccountStatus() {
+    // Simulate account status - replace with actual API call
+    const accounts = [
+        { name: 'Master', status: 'Connected', color: 'success' },
+        { name: 'Child 1', status: 'Connected', color: 'success' },
+        { name: 'Child 2', status: 'Disconnected', color: 'danger' }
+    ];
+    
+    const container = document.getElementById('account-status-list');
+    container.innerHTML = '';
+    
+    accounts.forEach(account => {
+        const item = document.createElement('div');
+        item.className = 'mb-2 p-2 border rounded';
+        item.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="fw-bold">${account.name}</span>
+                <span class="badge bg-${account.color}">${account.status}</span>
+            </div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+function updateSystemLogs() {
+    const logs = document.getElementById('system-logs');
+    const sampleLogs = [
+        '[INFO] Trading system initialized',
+        '[INFO] Master account connected',
+        '[INFO] 2 child accounts loaded',
+        '[DEBUG] Margin check completed'
+    ];
+    
+    logs.innerHTML = '';
+    sampleLogs.forEach(log => {
+        const logItem = document.createElement('div');
+        logItem.className = 'small mb-1 font-monospace';
+        logItem.textContent = log;
+        logs.appendChild(logItem);
+    });
+}
+
+function showAlert(message, type) {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    document.querySelector('main').insertAdjacentHTML('afterbegin', alertHtml);
+}
+
+// Simulate some trading activity for demo
+setTimeout(() => {
+    if (Math.random() > 0.5) {
+        addTradingFeedItem('Master Account', 'New BUY order detected: RELIANCE @ ₹2,450', 'info');
+        setTimeout(() => {
+            addTradingFeedItem('Child Account 1', 'Order copied successfully: RELIANCE @ ₹2,450', 'success');
+            addTradingFeedItem('Child Account 2', 'Order copied successfully: RELIANCE @ ₹2,450', 'success');
+        }, 2000);
+    }
+}, 10000);
+</script>
+{% endblock %}

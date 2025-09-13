@@ -1,10 +1,11 @@
 modules = ["python-3.11"]
 [agent]
 expertMode = true
+integrations = ["flask_authentication:1.0.0"]
 
 [nix]
 channel = "stable-25_05"
-packages = ["cargo", "libiconv", "libxcrypt", "openssl", "pkg-config", "rustc"]
+packages = ["cargo", "iana-etc", "libiconv", "libxcrypt", "openssl", "pkg-config", "rustc"]
 
 [workflows]
 runButton = "Project"
@@ -22,9 +23,18 @@ args = "Dhan Copy Trader"
 name = "Dhan Copy Trader"
 author = "agent"
 
+[workflows.workflow.metadata]
+outputType = "webview"
+
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "python Dhan_CopyTrader.py"
+args = "python app.py"
+waitForPort = 5000
 
-[workflows.workflow.metadata]
-outputType = "console"
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[[ports]]
+localPort = 40587
+externalPort = 3000

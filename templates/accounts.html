@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+
+{% block title %}Accounts - Dhan Copy Trader{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-people"></i> Account Management</h1>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addChildModal">
+        <i class="bi bi-plus-circle"></i> Add Child Account
+    </button>
+</div>
+
+<!-- Master Account Card -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-person-check text-primary"></i> Master Account
+                </h5>
+                <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#masterAccountModal">
+                    <i class="bi bi-pencil"></i> Configure
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="master-account-info">
+                    <p class="text-muted">Loading master account information...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Child Accounts -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-people text-success"></i> Child Accounts
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="child-accounts-container">
+                    <p class="text-muted">Loading child accounts...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Master Account Modal -->
+<div class="modal fade" id="masterAccountModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Configure Master Account</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="master-account-form">
+                    <div class="mb-3">
+                        <label class="form-label">Client ID</label>
+                        <input type="text" class="form-control" id="master-client-id" required>
+                        <div class="form-text">Your Dhan trading account client ID</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Access Token</label>
+                        <textarea class="form-control" id="master-access-token" rows="3" required></textarea>
+                        <div class="form-text">Your Dhan API access token (will be encrypted automatically)</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveMasterAccount()">
+                    <i class="bi bi-save"></i> Save Master Account
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Child Account Modal -->
+<div class="modal fade" id="addChildModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Child Account</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="child-account-form">
+                    <div class="mb-3">
+                        <label class="form-label">Account Name</label>
+                        <input type="text" class="form-control" id="child-name" required>
+                        <div class="form-text">A friendly name for this account (e.g., "Portfolio 1")</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Client ID</label>
+                        <input type="text" class="form-control" id="child-client-id" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Access Token</label>
+                        <textarea class="form-control" id="child-access-token" rows="3" required></textarea>
+                        <div class="form-text">Will be encrypted automatically</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Multiplier</label>
+                        <input type="number" class="form-control" id="child-multiplier" value="1.0" step="0.1" min="0.1" max="10">
+                        <div class="form-text">Position size multiplier (1.0 = same as master, 0.5 = half, 2.0 = double)</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <select class="form-control" id="child-enabled">
+                            <option value="Y">Enabled</option>
+                            <option value="N">Disabled</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveChildAccount()">
+                    <i class="bi bi-save"></i> Add Account
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Load account information on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadMasterAccount();
+    loadChildAccounts();
+});
+
+function loadMasterAccount() {
+    fetch('/api/accounts/master')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('master-account-info');
+            if (data.client_id) {
+                const statusBadge = data.connected ? 
+                    '<span class="badge bg-success">Connected</span>' : 
+                    '<span class="badge bg-danger">Disconnected</span>';
+                
+                container.innerHTML = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <strong>Client ID:</strong> ${data.client_id}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Status:</strong> ${statusBadge}
+                        </div>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i> 
+                        Master account not configured. Click Configure to set up your master trading account.
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading master account:', error);
+        });
+}
+
+function loadChildAccounts() {
+    fetch('/api/accounts/children')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('child-accounts-container');
+            
+            if (Object.keys(data).length === 0) {
+                container.innerHTML = `
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> 
+                        No child accounts configured. Click "Add Child Account" to get started.
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '<div class="row">';
+            
+            for (const [name, account] of Object.entries(data)) {
+                const statusBadge = account.connected ? 
+                    '<span class="badge bg-success">Connected</span>' : 
+                    '<span class="badge bg-danger">Disconnected</span>';
+                
+                const enabledBadge = account.enabled === 'Y' ? 
+                    '<span class="badge bg-primary">Active</span>' : 
+                    '<span class="badge bg-secondary">Inactive</span>';
+                
+                html += `
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="card-title">${name}</h6>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
+                                            <i class="bi bi-three-dots"></i>
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li><a class="dropdown-item" href="#" onclick="editChildAccount('${name}')">
+                                                <i class="bi bi-pencil"></i> Edit
+                                            </a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><a class="dropdown-item text-danger" href="#" onclick="deleteChildAccount('${name}')">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <p class="small text-muted mb-1">Client ID: ${account.client_id}</p>
+                                <p class="small mb-2">Multiplier: <strong>${account.multiplier}x</strong></p>
+                                <div class="d-flex justify-content-between">
+                                    ${statusBadge}
+                                    ${enabledBadge}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            container.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error loading child accounts:', error);
+        });
+}
+
+function saveMasterAccount() {
+    const clientId = document.getElementById('master-client-id').value;
+    const accessToken = document.getElementById('master-access-token').value;
+    
+    if (!clientId || !accessToken) {
+        alert('Please fill in all fields');
+        return;
+    }
+    
+    fetch('/api/accounts/master', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            client_id: clientId,
+            access_token: accessToken
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('masterAccountModal')).hide();
+            loadMasterAccount();
+            showAlert('Master account configured successfully', 'success');
+        } else {
+            showAlert('Error configuring master account: ' + data.error, 'danger');
+        }
+    })
+    .catch(error => {
+        showAlert('Error saving master account: ' + error.message, 'danger');
+    });
+}
+
+function saveChildAccount() {
+    // Implementation for saving child account
+    showAlert('Child account functionality will be implemented soon', 'info');
+}
+
+function editChildAccount(name) {
+    showAlert('Edit functionality will be implemented soon', 'info');
+}
+
+function deleteChildAccount(name) {
+    if (confirm(`Are you sure you want to delete child account "${name}"?`)) {
+        showAlert('Delete functionality will be implemented soon', 'info');
+    }
+}
+
+function showAlert(message, type) {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    document.querySelector('main').insertAdjacentHTML('afterbegin', alertHtml);
+}
+</script>
+{% endblock %}

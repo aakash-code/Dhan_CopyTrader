@@ -15,8 +15,6 @@ else:
         envf.write(f"\nkey={mysecret.decode()}")
     print("New key generated and saved to .env")
 
-print(f"Encryption key: {mysecret}")
-
 f = Fernet(mysecret)
 access_token = input("Enter Dhan access token to encrypt: ")
 

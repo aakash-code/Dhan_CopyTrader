@@ -5,7 +5,7 @@ import logging
 import json
 import sys
 from dhanhq import dhanhq
-#from dhanhq import DhanLiveFeed
+# DhanLiveFeed is not available in current dhanhq package version
 from cryptography.fernet import Fernet
 from dotenv import load_dotenv
 
@@ -30,8 +30,9 @@ with open(configFile, 'r') as f:
 
 # Load encryption key
 load_dotenv()
-if os.environ.get('key'):
-    mysecret = os.environ.get('key').encode()
+key = os.environ.get('key')
+if key:
+    mysecret = key.encode()
 else:
     print('Environment file not found. Exiting')
     sys.exit()
@@ -326,22 +327,10 @@ def map_validity(validity):
 
 
 def setup_live_feed():
-    """Setup Dhan live feed for order updates"""
-    try:
-        # Initialize live feed
-        live_feed = DhanLiveFeed(
-            client_id=masterconfig['client_id'],
-            access_token=deCryptPwd(masterconfig['access_token']),
-            instruments=[]  # Add instruments as needed
-        )
-        
-        # Set up callbacks
-        live_feed.on_order_update = on_order_update
-        
-        return live_feed
-    except Exception as e:
-        logging.error(f"Failed to setup live feed: {e}")
-        raise
+    """Setup Dhan live feed for order updates - Currently disabled as DhanLiveFeed not available in current package version"""
+    # DhanLiveFeed is not available in current dhanhq package version
+    # This function is kept for future compatibility
+    raise Exception("DhanLiveFeed not available in current dhanhq package version")
 
 
 def main():

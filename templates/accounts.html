@@ -128,6 +128,55 @@
         </div>
     </div>
 </div>
+
+<!-- Edit Child Account Modal -->
+<div class="modal fade" id="editChildModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Child Account</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="edit-child-account-form">
+                    <input type="hidden" id="edit-child-original-name">
+                    <div class="mb-3">
+                        <label class="form-label">Account Name</label>
+                        <input type="text" class="form-control" id="edit-child-name" required>
+                        <div class="form-text">A friendly name for this account (e.g., "Portfolio 1")</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Client ID</label>
+                        <input type="text" class="form-control" id="edit-child-client-id" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Access Token</label>
+                        <textarea class="form-control" id="edit-child-access-token" rows="3" placeholder="Leave empty to keep existing token"></textarea>
+                        <div class="form-text">Leave empty to keep the existing token, or enter new token to update</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Multiplier</label>
+                        <input type="number" class="form-control" id="edit-child-multiplier" value="1.0" step="0.1" min="0.1" max="10">
+                        <div class="form-text">Position size multiplier (1.0 = same as master, 0.5 = half, 2.0 = double)</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <select class="form-control" id="edit-child-enabled">
+                            <option value="Y">Enabled</option>
+                            <option value="N">Disabled</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="updateChildAccount()">
+                    <i class="bi bi-save"></i> Update Account
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -275,17 +324,136 @@ function saveMasterAccount() {
 }
 
 function saveChildAccount() {
-    // Implementation for saving child account
-    showAlert('Child account functionality will be implemented soon', 'info');
+    const name = document.getElementById('child-name').value;
+    const clientId = document.getElementById('child-client-id').value;
+    const accessToken = document.getElementById('child-access-token').value;
+    const multiplier = document.getElementById('child-multiplier').value;
+    const enabled = document.getElementById('child-enabled').value;
+    
+    if (!name || !clientId || !accessToken) {
+        showAlert('Please fill in all required fields', 'warning');
+        return;
+    }
+    
+    fetch('/api/accounts/children', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            name: name,
+            client_id: clientId,
+            access_token: accessToken,
+            multiplier: parseFloat(multiplier),
+            enabled: enabled
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('addChildModal')).hide();
+            loadChildAccounts();
+            showAlert('Child account added successfully', 'success');
+            // Clear form
+            document.getElementById('child-account-form').reset();
+        } else {
+            showAlert('Error adding child account: ' + data.error, 'danger');
+        }
+    })
+    .catch(error => {
+        showAlert('Error saving child account: ' + error.message, 'danger');
+    });
 }
 
 function editChildAccount(name) {
-    showAlert('Edit functionality will be implemented soon', 'info');
+    // Fetch current account data
+    fetch('/api/accounts/children')
+        .then(response => response.json())
+        .then(data => {
+            if (data[name]) {
+                const account = data[name];
+                // Populate edit form
+                document.getElementById('edit-child-original-name').value = name;
+                document.getElementById('edit-child-name').value = name;
+                document.getElementById('edit-child-client-id').value = account.client_id;
+                document.getElementById('edit-child-access-token').value = ''; // Don't show existing token
+                document.getElementById('edit-child-multiplier').value = account.multiplier;
+                document.getElementById('edit-child-enabled').value = account.enabled;
+                
+                // Show edit modal
+                new bootstrap.Modal(document.getElementById('editChildModal')).show();
+            } else {
+                showAlert('Account not found', 'danger');
+            }
+        })
+        .catch(error => {
+            showAlert('Error loading account data: ' + error.message, 'danger');
+        });
+}
+
+function updateChildAccount() {
+    const originalName = document.getElementById('edit-child-original-name').value;
+    const name = document.getElementById('edit-child-name').value;
+    const clientId = document.getElementById('edit-child-client-id').value;
+    const accessToken = document.getElementById('edit-child-access-token').value;
+    const multiplier = document.getElementById('edit-child-multiplier').value;
+    const enabled = document.getElementById('edit-child-enabled').value;
+    
+    if (!name || !clientId) {
+        showAlert('Please fill in all required fields', 'warning');
+        return;
+    }
+    
+    const updateData = {
+        client_id: clientId,
+        multiplier: parseFloat(multiplier),
+        enabled: enabled
+    };
+    
+    // Only include access token if provided
+    if (accessToken.trim()) {
+        updateData.access_token = accessToken;
+    }
+    
+    fetch(`/api/accounts/children/${originalName}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('editChildModal')).hide();
+            loadChildAccounts();
+            showAlert('Child account updated successfully', 'success');
+        } else {
+            showAlert('Error updating child account: ' + data.error, 'danger');
+        }
+    })
+    .catch(error => {
+        showAlert('Error updating child account: ' + error.message, 'danger');
+    });
 }
 
 function deleteChildAccount(name) {
     if (confirm(`Are you sure you want to delete child account "${name}"?`)) {
-        showAlert('Delete functionality will be implemented soon', 'info');
+        fetch(`/api/accounts/children/${name}`, {
+            method: 'DELETE',
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                loadChildAccounts();
+                showAlert('Child account deleted successfully', 'success');
+            } else {
+                showAlert('Error deleting child account: ' + data.error, 'danger');
+            }
+        })
+        .catch(error => {
+            showAlert('Error deleting child account: ' + error.message, 'danger');
+        });
     }
 }
 

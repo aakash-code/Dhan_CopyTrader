@@ -1,46 +1,53 @@
 // Main JavaScript for Dhan Copy Trader
 
-// Initialize Socket.IO connection
-const socket = io();
+// Socket.IO connection - initialize only when authenticated
+let socket = null;
 
 // Connection status management
 const statusIndicator = document.getElementById('status-indicator');
 const statusText = document.getElementById('status-text');
 
-// Socket event handlers
-socket.on('connect', function() {
-    updateConnectionStatus('connected', 'Connected');
-    console.log('Connected to server');
-});
+// Initialize Socket.IO connection (call this only when authenticated)
+function initializeSocket() {
+    if (socket) return; // Already initialized
+    
+    socket = io();
+    
+    // Socket event handlers
+    socket.on('connect', function() {
+        updateConnectionStatus('connected', 'Connected');
+        console.log('Connected to server');
+    });
 
-socket.on('disconnect', function() {
-    updateConnectionStatus('disconnected', 'Disconnected');
-    console.log('Disconnected from server');
-});
+    socket.on('disconnect', function() {
+        updateConnectionStatus('disconnected', 'Disconnected');
+        console.log('Disconnected from server');
+    });
 
-socket.on('status', function(data) {
-    console.log('Status update:', data);
-    showNotification(data.message, 'info');
-});
+    socket.on('status', function(data) {
+        console.log('Status update:', data);
+        showNotification(data.message, 'info');
+    });
 
-socket.on('margin_update', function(data) {
-    console.log('Margin update:', data);
-    if (typeof updateMarginsTable === 'function') {
-        updateMarginsTable(data);
-    }
-});
+    socket.on('margin_update', function(data) {
+        console.log('Margin update:', data);
+        if (typeof updateMarginsTable === 'function') {
+            updateMarginsTable(data);
+        }
+    });
 
-socket.on('status_update', function(data) {
-    console.log('Trading status update:', data);
-    updateTradingStatus(data);
-});
+    socket.on('status_update', function(data) {
+        console.log('Trading status update:', data);
+        updateTradingStatus(data);
+    });
 
-socket.on('order_update', function(data) {
-    console.log('Order update:', data);
-    if (typeof addTradingFeedItem === 'function') {
-        addTradingFeedItem('Order Update', JSON.stringify(data), 'info');
-    }
-});
+    socket.on('order_update', function(data) {
+        console.log('Order update:', data);
+        if (typeof addTradingFeedItem === 'function') {
+            addTradingFeedItem('Order Update', JSON.stringify(data), 'info');
+        }
+    });
+}
 
 // Connection status helper
 function updateConnectionStatus(status, text) {
@@ -225,8 +232,15 @@ document.addEventListener('DOMContentLoaded', function() {
         return new bootstrap.Popover(popoverTriggerEl);
     });
     
-    // Set initial connection status
-    updateConnectionStatus('connecting', 'Connecting...');
+    // Only initialize Socket.IO if we're not on the login page
+    const isLoginPage = window.location.pathname.includes('/login') || 
+                       document.querySelector('form[action*="login"]') !== null;
+    
+    if (!isLoginPage) {
+        // Set initial connection status and initialize socket
+        updateConnectionStatus('connecting', 'Connecting...');
+        initializeSocket();
+    }
     
     console.log('Dhan Copy Trader initialized');
 });
@@ -325,3 +339,4 @@ window.showNotification = showNotification;
 window.apiRequest = apiRequest;
 window.formatCurrency = formatCurrency;
 window.formatPercentage = formatPercentage;
+window.initializeSocket = initializeSocket;

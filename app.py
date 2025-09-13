@@ -168,6 +168,7 @@ def api_master_account():
 
 @app.route('/api/accounts/children', methods=['GET', 'POST'])
 @login_required
+@csrf.exempt
 def api_child_accounts():
     if request.method == 'GET':
         # Return child accounts
@@ -187,6 +188,121 @@ def api_child_accounts():
                 return jsonify(safe_children)
         except:
             return jsonify({})
+    
+    elif request.method == 'POST':
+        # Add new child account
+        data = request.json
+        try:
+            # Validate required fields
+            if not all(k in data for k in ['name', 'client_id', 'access_token']):
+                return jsonify({'success': False, 'error': 'Missing required fields'}), 400
+            
+            # Check if account name already exists
+            try:
+                with open('config.json', 'r') as f:
+                    config = json.load(f)
+                    if data['name'] in config.get('CHILD', {}):
+                        return jsonify({'success': False, 'error': 'Account name already exists'}), 400
+            except:
+                pass
+            
+            # Encrypt the token
+            encryption_manager = EncryptionManager()
+            encrypted_token = encryption_manager.encrypt_token(data['access_token'])
+            
+            # Add account using trader if available
+            if trader:
+                success = trader.add_child_account(
+                    name=data['name'],
+                    client_id=data['client_id'],
+                    encrypted_token=encrypted_token,
+                    multiplier=float(data.get('multiplier', 1.0)),
+                    enabled=data.get('enabled', 'Y')
+                )
+                if success:
+                    return jsonify({'success': True, 'message': 'Child account added successfully'})
+                else:
+                    return jsonify({'success': False, 'error': 'Failed to add child account'}), 400
+            else:
+                return jsonify({'success': False, 'error': 'Trading system not initialized'}), 500
+            
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 400
+
+@app.route('/api/accounts/children/<name>', methods=['PUT', 'DELETE'])
+@login_required
+@csrf.exempt
+def api_child_account_detail(name):
+    if request.method == 'PUT':
+        # Update existing child account
+        data = request.json
+        try:
+            # Check if account exists
+            try:
+                with open('config.json', 'r') as f:
+                    config = json.load(f)
+                    if name not in config.get('CHILD', {}):
+                        return jsonify({'success': False, 'error': 'Account not found'}), 404
+            except:
+                return jsonify({'success': False, 'error': 'Configuration file not found'}), 500
+            
+            # Remove old account
+            if trader:
+                trader.remove_child_account(name)
+            
+            # Encrypt the token if provided
+            encrypted_token = None
+            if 'access_token' in data and data['access_token']:
+                encryption_manager = EncryptionManager()
+                encrypted_token = encryption_manager.encrypt_token(data['access_token'])
+            else:
+                # Keep existing token if not provided
+                existing_account = config['CHILD'][name]
+                encrypted_token = existing_account.get('access_token')
+            
+            # Add updated account
+            if trader:
+                success = trader.add_child_account(
+                    name=name,
+                    client_id=data.get('client_id', config['CHILD'][name]['client_id']),
+                    encrypted_token=encrypted_token,
+                    multiplier=float(data.get('multiplier', config['CHILD'][name].get('multiplier', 1.0))),
+                    enabled=data.get('enabled', config['CHILD'][name].get('enabled', 'Y'))
+                )
+                if success:
+                    return jsonify({'success': True, 'message': 'Child account updated successfully'})
+                else:
+                    return jsonify({'success': False, 'error': 'Failed to update child account'}), 400
+            else:
+                return jsonify({'success': False, 'error': 'Trading system not initialized'}), 500
+            
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 400
+    
+    elif request.method == 'DELETE':
+        # Delete child account
+        try:
+            # Check if account exists
+            try:
+                with open('config.json', 'r') as f:
+                    config = json.load(f)
+                    if name not in config.get('CHILD', {}):
+                        return jsonify({'success': False, 'error': 'Account not found'}), 404
+            except:
+                return jsonify({'success': False, 'error': 'Configuration file not found'}), 500
+            
+            # Remove account using trader
+            if trader:
+                success = trader.remove_child_account(name)
+                if success:
+                    return jsonify({'success': True, 'message': 'Child account deleted successfully'})
+                else:
+                    return jsonify({'success': False, 'error': 'Failed to delete child account'}), 400
+            else:
+                return jsonify({'success': False, 'error': 'Trading system not initialized'}), 500
+            
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 400
 
 @app.route('/api/margins')
 @login_required

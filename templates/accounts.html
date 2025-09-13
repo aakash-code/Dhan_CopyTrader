@@ -73,7 +73,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="saveMasterAccount()">
+                <button type="button" class="btn btn-primary" id="save-master-btn">
                     <i class="bi bi-save"></i> Save Master Account
                 </button>
             </div>
@@ -121,7 +121,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="saveChildAccount()">
+                <button type="button" class="btn btn-primary" id="save-child-btn">
                     <i class="bi bi-save"></i> Add Account
                 </button>
             </div>
@@ -170,7 +170,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="updateChildAccount()">
+                <button type="button" class="btn btn-primary" id="update-child-btn">
                     <i class="bi bi-save"></i> Update Account
                 </button>
             </div>
@@ -181,290 +181,365 @@
 
 {% block scripts %}
 <script>
+// Security: HTML escape function to prevent XSS
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+}
+
 // Load account information on page load
 document.addEventListener('DOMContentLoaded', function() {
     loadMasterAccount();
     loadChildAccounts();
+    setupEventListeners();
 });
 
-function loadMasterAccount() {
-    fetch('/api/accounts/master')
-        .then(response => response.json())
-        .then(data => {
-            const container = document.getElementById('master-account-info');
-            if (data.client_id) {
-                const statusBadge = data.connected ? 
-                    '<span class="badge bg-success">Connected</span>' : 
-                    '<span class="badge bg-danger">Disconnected</span>';
-                
-                container.innerHTML = `
-                    <div class="row">
-                        <div class="col-md-6">
-                            <strong>Client ID:</strong> ${data.client_id}
-                        </div>
-                        <div class="col-md-6">
-                            <strong>Status:</strong> ${statusBadge}
-                        </div>
-                    </div>
-                `;
-            } else {
-                container.innerHTML = `
-                    <div class="alert alert-warning">
-                        <i class="bi bi-exclamation-triangle"></i> 
-                        Master account not configured. Click Configure to set up your master trading account.
-                    </div>
-                `;
-            }
-        })
-        .catch(error => {
-            console.error('Error loading master account:', error);
-        });
-}
-
-function loadChildAccounts() {
-    fetch('/api/accounts/children')
-        .then(response => response.json())
-        .then(data => {
-            const container = document.getElementById('child-accounts-container');
-            
-            if (Object.keys(data).length === 0) {
-                container.innerHTML = `
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle"></i> 
-                        No child accounts configured. Click "Add Child Account" to get started.
-                    </div>
-                `;
-                return;
-            }
-            
-            let html = '<div class="row">';
-            
-            for (const [name, account] of Object.entries(data)) {
-                const statusBadge = account.connected ? 
-                    '<span class="badge bg-success">Connected</span>' : 
-                    '<span class="badge bg-danger">Disconnected</span>';
-                
-                const enabledBadge = account.enabled === 'Y' ? 
-                    '<span class="badge bg-primary">Active</span>' : 
-                    '<span class="badge bg-secondary">Inactive</span>';
-                
-                html += `
-                    <div class="col-md-6 col-lg-4 mb-3">
-                        <div class="card">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <h6 class="card-title">${name}</h6>
-                                    <div class="dropdown">
-                                        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
-                                            <i class="bi bi-three-dots"></i>
-                                        </button>
-                                        <ul class="dropdown-menu">
-                                            <li><a class="dropdown-item" href="#" onclick="editChildAccount('${name}')">
-                                                <i class="bi bi-pencil"></i> Edit
-                                            </a></li>
-                                            <li><hr class="dropdown-divider"></li>
-                                            <li><a class="dropdown-item text-danger" href="#" onclick="deleteChildAccount('${name}')">
-                                                <i class="bi bi-trash"></i> Delete
-                                            </a></li>
-                                        </ul>
-                                    </div>
-                                </div>
-                                <p class="small text-muted mb-1">Client ID: ${account.client_id}</p>
-                                <p class="small mb-2">Multiplier: <strong>${account.multiplier}x</strong></p>
-                                <div class="d-flex justify-content-between">
-                                    ${statusBadge}
-                                    ${enabledBadge}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-            
-            html += '</div>';
-            container.innerHTML = html;
-        })
-        .catch(error => {
-            console.error('Error loading child accounts:', error);
-        });
-}
-
-function saveMasterAccount() {
-    const clientId = document.getElementById('master-client-id').value;
-    const accessToken = document.getElementById('master-access-token').value;
+// Setup secure event listeners
+function setupEventListeners() {
+    // Master account save button
+    document.getElementById('save-master-btn')?.addEventListener('click', saveMasterAccount);
     
-    if (!clientId || !accessToken) {
-        alert('Please fill in all fields');
-        return;
-    }
+    // Child account save button
+    document.getElementById('save-child-btn')?.addEventListener('click', saveChildAccount);
     
-    fetch('/api/accounts/master', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            client_id: clientId,
-            access_token: accessToken
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            bootstrap.Modal.getInstance(document.getElementById('masterAccountModal')).hide();
-            loadMasterAccount();
-            showAlert('Master account configured successfully', 'success');
-        } else {
-            showAlert('Error configuring master account: ' + data.error, 'danger');
+    // Child account update button
+    document.getElementById('update-child-btn')?.addEventListener('click', updateChildAccount);
+    
+    // Event delegation for dynamic edit/delete buttons
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.edit-child-btn')) {
+            e.preventDefault();
+            const accountName = e.target.closest('.edit-child-btn').getAttribute('data-account-name');
+            editChildAccount(accountName);
         }
-    })
-    .catch(error => {
-        showAlert('Error saving master account: ' + error.message, 'danger');
+        
+        if (e.target.closest('.delete-child-btn')) {
+            e.preventDefault();
+            const accountName = e.target.closest('.delete-child-btn').getAttribute('data-account-name');
+            deleteChildAccount(accountName);
+        }
     });
 }
 
-function saveChildAccount() {
-    const name = document.getElementById('child-name').value;
-    const clientId = document.getElementById('child-client-id').value;
-    const accessToken = document.getElementById('child-access-token').value;
+async function loadMasterAccount() {
+    try {
+        const data = await apiRequest('/api/accounts/master');
+        const container = document.getElementById('master-account-info');
+        
+        if (data.client_id) {
+            const statusBadge = data.connected ? 
+                '<span class="badge bg-success">Connected</span>' : 
+                '<span class="badge bg-danger">Disconnected</span>';
+            
+            container.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>Client ID:</strong> ${escapeHtml(data.client_id)}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Status:</strong> ${statusBadge}
+                    </div>
+                </div>
+            `;
+        } else {
+            container.innerHTML = `
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i> 
+                    Master account not configured. Click Configure to set up your master trading account.
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading master account:', error);
+        showNotification('Error loading master account', 'error');
+    }
+}
+
+async function loadChildAccounts() {
+    try {
+        const data = await apiRequest('/api/accounts/children');
+        const container = document.getElementById('child-accounts-container');
+        
+        if (Object.keys(data).length === 0) {
+            container.innerHTML = `
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> 
+                    No child accounts configured. Click "Add Child Account" to get started.
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '<div class="row">';
+        
+        for (const [name, account] of Object.entries(data)) {
+            const statusBadge = account.connected ? 
+                '<span class="badge bg-success">Connected</span>' : 
+                '<span class="badge bg-danger">Disconnected</span>';
+            
+            const enabledBadge = account.enabled === 'Y' ? 
+                '<span class="badge bg-primary">Active</span>' : 
+                '<span class="badge bg-secondary">Inactive</span>';
+            
+            // Security: Escape all user-provided content
+            const escapedName = escapeHtml(name);
+            const escapedClientId = escapeHtml(account.client_id);
+            const escapedMultiplier = escapeHtml(account.multiplier.toString());
+            
+            html += `
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="card-title">${escapedName}</h6>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
+                                        <i class="bi bi-three-dots"></i>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item edit-child-btn" href="#" data-account-name="${escapedName}">
+                                            <i class="bi bi-pencil"></i> Edit
+                                        </a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item text-danger delete-child-btn" href="#" data-account-name="${escapedName}">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <p class="small text-muted mb-1">Client ID: ${escapedClientId}</p>
+                            <p class="small mb-2">Multiplier: <strong>${escapedMultiplier}x</strong></p>
+                            <div class="d-flex justify-content-between">
+                                ${statusBadge}
+                                ${enabledBadge}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        html += '</div>';
+        container.innerHTML = html;
+    } catch (error) {
+        console.error('Error loading child accounts:', error);
+        showNotification('Error loading child accounts', 'error');
+    }
+}
+
+async function saveMasterAccount() {
+    const clientId = document.getElementById('master-client-id').value.trim();
+    const accessToken = document.getElementById('master-access-token').value.trim();
+    
+    if (!clientId || !accessToken) {
+        showNotification('Please fill in all fields', 'warning');
+        return;
+    }
+    
+    try {
+        const data = await apiRequest('/api/accounts/master', 'POST', {
+            client_id: clientId,
+            access_token: accessToken
+        });
+        
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('masterAccountModal')).hide();
+            await loadMasterAccount();
+            showNotification('Master account configured successfully', 'success');
+            // Clear sensitive form data
+            document.getElementById('master-access-token').value = '';
+        } else {
+            showNotification('Error configuring master account: ' + data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error saving master account:', error);
+        showNotification('Error saving master account', 'error');
+    }
+}
+
+async function saveChildAccount() {
+    const name = document.getElementById('child-name').value.trim();
+    const clientId = document.getElementById('child-client-id').value.trim();
+    const accessToken = document.getElementById('child-access-token').value.trim();
     const multiplier = document.getElementById('child-multiplier').value;
     const enabled = document.getElementById('child-enabled').value;
     
     if (!name || !clientId || !accessToken) {
-        showAlert('Please fill in all required fields', 'warning');
+        showNotification('Please fill in all required fields', 'warning');
         return;
     }
     
-    fetch('/api/accounts/children', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+    // Validate multiplier
+    const multiplierFloat = parseFloat(multiplier);
+    if (isNaN(multiplierFloat) || multiplierFloat <= 0) {
+        showNotification('Multiplier must be a positive number', 'warning');
+        return;
+    }
+    
+    try {
+        const data = await apiRequest('/api/accounts/children', 'POST', {
             name: name,
             client_id: clientId,
             access_token: accessToken,
-            multiplier: parseFloat(multiplier),
+            multiplier: multiplierFloat,
             enabled: enabled
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
+        });
+        
         if (data.success) {
             bootstrap.Modal.getInstance(document.getElementById('addChildModal')).hide();
-            loadChildAccounts();
-            showAlert('Child account added successfully', 'success');
-            // Clear form
+            await loadChildAccounts();
+            showNotification('Child account added successfully', 'success');
+            // Clear form including sensitive data
             document.getElementById('child-account-form').reset();
         } else {
-            showAlert('Error adding child account: ' + data.error, 'danger');
+            showNotification('Error adding child account: ' + data.error, 'error');
         }
-    })
-    .catch(error => {
-        showAlert('Error saving child account: ' + error.message, 'danger');
-    });
+    } catch (error) {
+        console.error('Error saving child account:', error);
+        showNotification('Error saving child account', 'error');
+    }
 }
 
-function editChildAccount(name) {
-    // Fetch current account data
-    fetch('/api/accounts/children')
-        .then(response => response.json())
-        .then(data => {
-            if (data[name]) {
-                const account = data[name];
-                // Populate edit form
-                document.getElementById('edit-child-original-name').value = name;
-                document.getElementById('edit-child-name').value = name;
-                document.getElementById('edit-child-client-id').value = account.client_id;
-                document.getElementById('edit-child-access-token').value = ''; // Don't show existing token
-                document.getElementById('edit-child-multiplier').value = account.multiplier;
-                document.getElementById('edit-child-enabled').value = account.enabled;
-                
-                // Show edit modal
-                new bootstrap.Modal(document.getElementById('editChildModal')).show();
-            } else {
-                showAlert('Account not found', 'danger');
-            }
-        })
-        .catch(error => {
-            showAlert('Error loading account data: ' + error.message, 'danger');
-        });
+async function editChildAccount(name) {
+    try {
+        const data = await apiRequest('/api/accounts/children');
+        
+        if (data[name]) {
+            const account = data[name];
+            // Populate edit form
+            document.getElementById('edit-child-original-name').value = name;
+            document.getElementById('edit-child-name').value = name;
+            document.getElementById('edit-child-client-id').value = account.client_id;
+            document.getElementById('edit-child-access-token').value = ''; // Don't show existing token
+            document.getElementById('edit-child-multiplier').value = account.multiplier;
+            document.getElementById('edit-child-enabled').value = account.enabled;
+            
+            // Show edit modal
+            new bootstrap.Modal(document.getElementById('editChildModal')).show();
+        } else {
+            showNotification('Account not found', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading account data:', error);
+        showNotification('Error loading account data', 'error');
+    }
 }
 
-function updateChildAccount() {
-    const originalName = document.getElementById('edit-child-original-name').value;
-    const name = document.getElementById('edit-child-name').value;
-    const clientId = document.getElementById('edit-child-client-id').value;
-    const accessToken = document.getElementById('edit-child-access-token').value;
+async function updateChildAccount() {
+    const originalName = document.getElementById('edit-child-original-name').value.trim();
+    const newName = document.getElementById('edit-child-name').value.trim();
+    const clientId = document.getElementById('edit-child-client-id').value.trim();
+    const accessToken = document.getElementById('edit-child-access-token').value.trim();
     const multiplier = document.getElementById('edit-child-multiplier').value;
     const enabled = document.getElementById('edit-child-enabled').value;
     
-    if (!name || !clientId) {
-        showAlert('Please fill in all required fields', 'warning');
+    if (!newName || !clientId) {
+        showNotification('Please fill in all required fields', 'warning');
         return;
     }
     
-    const updateData = {
-        client_id: clientId,
-        multiplier: parseFloat(multiplier),
-        enabled: enabled
-    };
-    
-    // Only include access token if provided
-    if (accessToken.trim()) {
-        updateData.access_token = accessToken;
+    // Validate multiplier
+    const multiplierFloat = parseFloat(multiplier);
+    if (isNaN(multiplierFloat) || multiplierFloat <= 0) {
+        showNotification('Multiplier must be a positive number', 'warning');
+        return;
     }
     
-    fetch(`/api/accounts/children/${originalName}`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updateData)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            bootstrap.Modal.getInstance(document.getElementById('editChildModal')).hide();
-            loadChildAccounts();
-            showAlert('Child account updated successfully', 'success');
-        } else {
-            showAlert('Error updating child account: ' + data.error, 'danger');
-        }
-    })
-    .catch(error => {
-        showAlert('Error updating child account: ' + error.message, 'danger');
-    });
-}
-
-function deleteChildAccount(name) {
-    if (confirm(`Are you sure you want to delete child account "${name}"?`)) {
-        fetch(`/api/accounts/children/${name}`, {
-            method: 'DELETE',
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                loadChildAccounts();
-                showAlert('Child account deleted successfully', 'success');
-            } else {
-                showAlert('Error deleting child account: ' + data.error, 'danger');
+    try {
+        // Handle account renaming by deleting old and creating new if name changed
+        if (originalName !== newName) {
+            // First check if new name already exists
+            const existingAccounts = await apiRequest('/api/accounts/children');
+            if (existingAccounts[newName]) {
+                showNotification('Account name already exists', 'error');
+                return;
             }
-        })
-        .catch(error => {
-            showAlert('Error deleting child account: ' + error.message, 'danger');
-        });
+            
+            // Get the original account data to preserve access token if not provided
+            const originalAccount = existingAccounts[originalName];
+            const updateData = {
+                name: newName,
+                client_id: clientId,
+                multiplier: multiplierFloat,
+                enabled: enabled
+            };
+            
+            // Include access token if provided, otherwise use existing
+            if (accessToken) {
+                updateData.access_token = accessToken;
+            } else {
+                // For renaming, we need to provide the existing token
+                updateData.access_token = originalAccount.access_token || '';
+            }
+            
+            // Delete old account
+            await apiRequest(`/api/accounts/children/${encodeURIComponent(originalName)}`, 'DELETE');
+            
+            // Create new account with new name
+            const result = await apiRequest('/api/accounts/children', 'POST', updateData);
+            
+            if (result.success) {
+                bootstrap.Modal.getInstance(document.getElementById('editChildModal')).hide();
+                await loadChildAccounts();
+                showNotification('Child account renamed and updated successfully', 'success');
+            } else {
+                showNotification('Error renaming child account: ' + result.error, 'error');
+                // Try to recreate original account in case of failure
+                await loadChildAccounts();
+            }
+        } else {
+            // Standard update without renaming
+            const updateData = {
+                client_id: clientId,
+                multiplier: multiplierFloat,
+                enabled: enabled
+            };
+            
+            // Only include access token if provided
+            if (accessToken) {
+                updateData.access_token = accessToken;
+            }
+            
+            const result = await apiRequest(`/api/accounts/children/${encodeURIComponent(originalName)}`, 'PUT', updateData);
+            
+            if (result.success) {
+                bootstrap.Modal.getInstance(document.getElementById('editChildModal')).hide();
+                await loadChildAccounts();
+                showNotification('Child account updated successfully', 'success');
+            } else {
+                showNotification('Error updating child account: ' + result.error, 'error');
+            }
+        }
+    } catch (error) {
+        console.error('Error updating child account:', error);
+        showNotification('Error updating child account', 'error');
     }
 }
 
-function showAlert(message, type) {
-    const alertHtml = `
-        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    `;
-    document.querySelector('main').insertAdjacentHTML('afterbegin', alertHtml);
+async function deleteChildAccount(name) {
+    if (!confirm(`Are you sure you want to delete child account "${name}"?`)) {
+        return;
+    }
+    
+    try {
+        const data = await apiRequest(`/api/accounts/children/${encodeURIComponent(name)}`, 'DELETE');
+        
+        if (data.success) {
+            await loadChildAccounts();
+            showNotification('Child account deleted successfully', 'success');
+        } else {
+            showNotification('Error deleting child account: ' + data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting child account:', error);
+        showNotification('Error deleting child account', 'error');
+    }
 }
 </script>
 {% endblock %}

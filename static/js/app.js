@@ -127,6 +127,11 @@ function showNotification(message, type = 'info') {
     }, 5000);
 }
 
+// Get CSRF token from meta tag
+function getCSRFToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+}
+
 // API helper functions
 async function apiRequest(url, method = 'GET', data = null) {
     const options = {
@@ -135,6 +140,14 @@ async function apiRequest(url, method = 'GET', data = null) {
             'Content-Type': 'application/json',
         }
     };
+    
+    // Add CSRF token for non-GET requests
+    if (method !== 'GET') {
+        const csrfToken = getCSRFToken();
+        if (csrfToken) {
+            options.headers['X-CSRFToken'] = csrfToken;
+        }
+    }
     
     if (data && method !== 'GET') {
         options.body = JSON.stringify(data);

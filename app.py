@@ -120,7 +120,6 @@ def settings():
 # API Routes
 @app.route('/api/accounts/master', methods=['GET', 'POST'])
 @login_required
-@csrf.exempt
 def api_master_account():
     if request.method == 'GET':
         # Return current master account info (without sensitive data)
@@ -168,7 +167,6 @@ def api_master_account():
 
 @app.route('/api/accounts/children', methods=['GET', 'POST'])
 @login_required
-@csrf.exempt
 def api_child_accounts():
     if request.method == 'GET':
         # Return child accounts
@@ -231,7 +229,6 @@ def api_child_accounts():
 
 @app.route('/api/accounts/children/<name>', methods=['PUT', 'DELETE'])
 @login_required
-@csrf.exempt
 def api_child_account_detail(name):
     if request.method == 'PUT':
         # Update existing child account
